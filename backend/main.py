@@ -41,3 +41,5 @@ def create_app() -> FastAPI:
 app = create_app()
 
 # Testing purpose im doinng this here, will move to a separate file later
+# Hello
+#Hi
