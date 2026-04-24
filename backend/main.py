@@ -43,3 +43,7 @@ app = create_app()
 # Testing purpose im doinng this here, will move to a separate file later
 # Hello
 #Hi
+
+
+# if __name__ == "__main__":
+#     import uvicorn
