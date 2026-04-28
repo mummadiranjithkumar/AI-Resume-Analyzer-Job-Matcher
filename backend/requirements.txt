@@ -4,6 +4,10 @@ fastapi==0.104.1
 uvicorn==0.24.0
 python-multipart==0.0.6
 pypdf==3.17.0
+
+torch==2.2.2+cpu
+sentence-transformers==2.2.2
+
 scikit-learn==1.4.2
 spacy==3.7.2
 numpy==1.24.4
