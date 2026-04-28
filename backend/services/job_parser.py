@@ -13,7 +13,7 @@ class JobParser:
     """Service for extracting text from job description files (PDF and images)"""
 
     def __init__(self):
-        # ✅ Set tesseract path ONLY for Windows (local dev)
+        # ✅ Set tesseract path ONLY for Windows (local development)
         if os.name == "nt":
             pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -50,21 +50,22 @@ class JobParser:
 
     def _extract_from_image(self, image_bytes: bytes) -> str:
         """
-        ⚠️ IMPORTANT:
-        OCR will FAIL on Render because tesseract is not installed there.
-        So we safely disable it in production.
+        OCR handling:
+        - Works locally (Windows)
+        - Works on Railway ONLY if tesseract is installed
+        - Fails safely if not available
         """
         try:
-            # ✅ Detect Render environment
-            if os.getenv("RENDER") == "true":
-                return "OCR not supported in deployed environment"
-
-            # ✅ Local OCR (works on your machine)
+            # Convert image
             image = Image.open(io.BytesIO(image_bytes))
             cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
             processed_image = self._preprocess_image(cv_image)
 
-            text = pytesseract.image_to_string(processed_image)
+            try:
+                # ✅ Try OCR
+                text = pytesseract.image_to_string(processed_image)
+            except pytesseract.TesseractNotFoundError:
+                return "OCR not available (tesseract not installed on server)"
 
             return self._clean_text(text)
 
