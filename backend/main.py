@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# FIXED IMPORT
-from backend.routes.match import router as match_router
+# ✅ Correct imports (NO backend prefix)
+from routes.match import router as match_router
+from routes.job import router as job_router
+from routes.resume import router as resume_router
 
 app = FastAPI(
     title="AI Resume Analyzer API",
@@ -10,6 +12,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,13 +21,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Routers
 app.include_router(match_router, prefix="/api", tags=["match"])
+app.include_router(job_router, prefix="/api", tags=["job"])
+app.include_router(resume_router, prefix="/api", tags=["resume"])
 
 
 @app.get("/")
 async def root():
     return {
         "message": "AI Resume Analyzer API running",
-        "docs": "http://127.0.0.1:8000/docs",
+        "docs": "/docs",
         "endpoint": "/api/match"
     }

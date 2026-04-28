@@ -4,8 +4,8 @@ from typing import Iterable, List, Set
 
 import numpy as np
 
-from backend.models.schemas import InternalATSComputationResult
-from backend.services import embeddings
+from models.schemas import InternalATSComputationResult
+from services import embeddings
 
 
 def _normalize_tokens(tokens: Iterable[str]) -> Set[str]:

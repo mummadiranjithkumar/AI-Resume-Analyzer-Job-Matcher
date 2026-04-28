@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterable, List, Set
 
-from backend.models.schemas import (
+from models.schemas import (
     InternalJobSkillExtractionResult,
     InternalSkillExtractionResult,
 )

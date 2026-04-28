@@ -3,14 +3,14 @@ from typing import Dict
 
 from fastapi import APIRouter, HTTPException, status
 
-from backend.models.schemas import (
+from models.schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
     ATSScoreResult,
     LLMAnalysis,
     SkillAnalysis,
 )
-from backend.services import (
+from services import (
     parser,
     vector_store,
     embeddings,

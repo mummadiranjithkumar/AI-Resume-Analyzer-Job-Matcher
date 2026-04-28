@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
-from backend.models.schemas import JobSkillExtractionRequest, JobSkillExtractionResponse
-from backend.services import skill_extractor
+# ✅ FIXED imports (removed backend)
+from models.schemas import JobSkillExtractionRequest, JobSkillExtractionResponse
+from services import skill_extractor
 
 
 router = APIRouter(tags=["job"])
@@ -18,4 +19,3 @@ def extract_job_skills(payload: JobSkillExtractionRequest) -> JobSkillExtraction
         job_skills=result.job_skills,
         tools=result.tools,
     )
-

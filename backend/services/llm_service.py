@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from backend.models.schemas import (
+from models.schemas import (
     ATSScoreResult,
     InternalRoadmapResult,
     SkillAnalysis,

@@ -4,8 +4,9 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi import status
 
-from backend.models.schemas import ResumeUploadResponse
-from backend.services import parser, embeddings, vector_store
+# ✅ FIXED imports (removed backend)
+from models.schemas import ResumeUploadResponse
+from services import parser, embeddings, vector_store
 
 
 router = APIRouter(tags=["resume"])
@@ -41,10 +42,10 @@ async def upload_resume(file: UploadFile = File(...)) -> ResumeUploadResponse:
                 detail="Unable to extract text from the uploaded file.",
             )
 
-        # Persist normalized text for later analysis
+        # Save extracted text
         parser.save_extracted_text(resume_id=resume_id, text=text)
 
-        # Chunk and embed into FAISS
+        # Chunk and embed
         chunks = parser.chunk_text(text)
         if not chunks:
             raise HTTPException(
@@ -63,6 +64,7 @@ async def upload_resume(file: UploadFile = File(...)) -> ResumeUploadResponse:
             filename=file.filename,
             text_preview=preview,
         )
+
     except HTTPException:
         raise
     except Exception as exc:
@@ -70,4 +72,3 @@ async def upload_resume(file: UploadFile = File(...)) -> ResumeUploadResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing resume: {exc}",
         ) from exc
-
