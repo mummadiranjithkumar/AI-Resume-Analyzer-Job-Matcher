@@ -3,26 +3,22 @@ import numpy as np
 from typing import List, Dict, Any
 import spacy
 
-from services.embeddings import get_embedding_model, embed_texts
-
 
 class SkillMatcher:
 
     def __init__(self):
-        self.model = get_embedding_model()
+        # ⚡ fast load (small model only)
         self.nlp = spacy.load("en_core_web_sm")
 
-    # 🔹 Normalize
+    # 🔹 normalize
     def normalize(self, text: str) -> str:
         text = text.lower().strip()
         text = re.sub(r'[^a-z0-9+\-\.#\s]', '', text)
         return text
 
-    # 🔹 FAST skill extraction (LIMITED TEXT)
+    # 🔹 extract skills
     def extract_skills(self, text: str) -> List[str]:
-        text = text[:2000]  # 🔥 LIMIT TEXT (HUGE SPEED BOOST)
         doc = self.nlp(text)
-
         skills = []
 
         for chunk in doc.noun_chunks:
@@ -34,66 +30,48 @@ class SkillMatcher:
             if chunk.root.pos_ in {"PRON", "DET"}:
                 continue
 
+            if any(w in phrase for w in [
+                "experience", "knowledge", "ability",
+                "candidate", "responsibility"
+            ]):
+                continue
+
             skills.append(phrase)
 
-        return list(set(skills))[:30]  # 🔥 LIMIT COUNT
+        return list(set(skills))
 
-    # 🔹 Experience extraction
-    def extract_experience_years(self, text: str) -> int:
-        matches = re.findall(r'(\d+)\+?\s*(years|yrs)', text.lower())
-        if matches:
-            return max(int(m[0]) for m in matches)
-        return 0
+    # 🔹 simple vector (no ML model)
+    def text_to_vector(self, text: str):
+        words = text.split()
+        return np.array([hash(w) % 10000 for w in words], dtype=np.float32)
 
-    # 🔹 Cosine
-    def cosine(self, a, b):
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+    # 🔹 similarity
+    def similarity(self, a, b):
+        if len(a) == 0 or len(b) == 0:
+            return 0.0
+
+        return float(len(set(a) & set(b)) / max(len(set(a)), 1))
 
     def analyze_match(self, resume_text: str, job_description: str) -> Dict[str, Any]:
 
-        # 🔥 LIMIT TEXT SIZE (CRITICAL)
-        resume_text = resume_text[:3000]
-        job_description = job_description[:3000]
-
-        # 🔹 Extract skills
+        # 🔹 extract skills
         jd_skills = self.extract_skills(job_description)
         resume_skills = self.extract_skills(resume_text)
 
-        # 🔹 Embed (LIMIT SIZE)
-        jd_emb = embed_texts(self.model, jd_skills[:20])
-        res_emb = embed_texts(self.model, resume_skills[:30])
+        matched = list(set(jd_skills) & set(resume_skills))
+        missing = list(set(jd_skills) - set(resume_skills))
 
-        matched = []
-        missing = []
-
-        for i, jd_vec in enumerate(jd_emb):
-
-            if len(res_emb) == 0:
-                missing.append(jd_skills[i])
-                continue
-
-            sims = res_emb @ jd_vec  # ⚡ faster
-
-            if np.max(sims) > 0.7:
-                matched.append(jd_skills[i])
-            else:
-                missing.append(jd_skills[i])
-
+        # 🔹 score
         keyword_score = len(matched) / max(len(jd_skills), 1)
 
-        # 🔹 Semantic similarity (ONLY 2 embeddings)
-        full_emb = embed_texts(self.model, [resume_text, job_description])
-        semantic_score = self.cosine(full_emb[0], full_emb[1])
+        # 🔹 simple semantic (word overlap)
+        resume_words = resume_text.lower().split()
+        jd_words = job_description.lower().split()
 
-        # 🔹 Experience
-        jd_exp = self.extract_experience_years(job_description)
-        res_exp = self.extract_experience_years(resume_text)
+        semantic_score = self.similarity(resume_words, jd_words)
 
-        exp_score = 1.0 if jd_exp == 0 else min(res_exp / jd_exp, 1.0)
-
-        # 🔥 FINAL SCORE
-        final_score = (0.6 * keyword_score + 0.3 * semantic_score + 0.1 * exp_score)
-        final_score = int(min(final_score * 100, 92))
+        final_score = int((0.7 * keyword_score + 0.3 * semantic_score) * 100)
+        final_score = min(final_score, 92)
 
         return {
             "match_score": final_score,
