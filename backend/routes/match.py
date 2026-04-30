@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import io
 
 from services.pdf_extractor import PDFExtractor
@@ -17,12 +17,12 @@ job_parser = JobParser()
 @router.post("/match", summary="Upload resume + JD (text or file)")
 async def match_resume_to_job(
     resume: UploadFile = File(..., description="Upload resume PDF"),
-    job_description: str = Form("", description="Paste job description text"),
-    job_file: UploadFile = File(None, description="Upload job description file"),
+    job_description: Optional[str] = Form(None, description="Paste job description text"),
+    job_file: Optional[UploadFile] = File(None, description="Upload job description file"),
 ) -> Dict[str, Any]:
 
     try:
-        # ✅ Validate resume
+        # ✅ Resume validation
         if not resume.filename.lower().endswith(".pdf"):
             raise HTTPException(400, "Only PDF files are allowed for resume")
 
@@ -36,15 +36,11 @@ async def match_resume_to_job(
         if not resume_text or len(resume_text.strip()) < 100:
             raise HTTPException(400, "Could not extract sufficient resume text")
 
-        # ✅ Handle job input
+        # 🔥 PRIORITY FIX
         final_job_description = ""
 
-        # Case 1: Text JD
-        if job_description.strip():
-            final_job_description = job_description.strip()
-
-        # Case 2: File JD
-        elif job_file:
+        # ✅ FIRST: file
+        if job_file and job_file.filename:
             job_file_ext = job_file.filename.lower().split(".")[-1]
             allowed = ["pdf", "jpg", "jpeg", "png", "bmp", "tiff"]
 
@@ -60,13 +56,17 @@ async def match_resume_to_job(
                 job_bytes, job_file.filename
             )
 
+        # ✅ SECOND: text
+        elif job_description and job_description.strip():
+            final_job_description = job_description.strip()
+
         else:
             raise HTTPException(
                 400,
-                "Provide either job_description OR job_file"
+                "Provide either job_file OR job_description"
             )
 
-        # Validate JD
+        # ✅ Validate JD
         if not final_job_description or len(final_job_description.strip()) < 50:
             raise HTTPException(400, "Invalid job description")
 
