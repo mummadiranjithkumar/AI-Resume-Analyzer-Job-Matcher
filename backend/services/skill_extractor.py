@@ -1,149 +1,71 @@
-from __future__ import annotations
+from typing import Dict, Any, List, Set
+import numpy as np
 
-import re
-from dataclasses import dataclass
-from typing import Iterable, List, Set
-
-from models.schemas import (
-    InternalJobSkillExtractionResult,
-    InternalSkillExtractionResult,
-)
+from services.embeddings import get_embedding_model, embed_texts
 
 
-_STOPWORDS: Set[str] = {
-    "the",
-    "and",
-    "a",
-    "an",
-    "of",
-    "for",
-    "to",
-    "in",
-    "on",
-    "with",
-    "at",
-    "by",
-    "is",
-    "are",
-    "was",
-    "were",
-    "be",
-    "this",
-    "that",
-    "as",
-    "or",
-    "from",
-    "your",
-    "our",
-    "we",
-    "you",
-    "i",
-}
-
-_KNOWN_TOOLS: Set[str] = {
-    "python",
-    "pandas",
-    "numpy",
-    "sql",
-    "postgresql",
-    "mysql",
-    "excel",
-    "powerbi",
-    "tableau",
-    "docker",
-    "kubernetes",
-    "aws",
-    "azure",
-    "gcp",
-    "git",
-    "github",
-    "gitlab",
-    "tensorflow",
-    "pytorch",
-    "sklearn",
-    "scikit-learn",
-    "jira",
-    "confluence",
+STOPWORDS = {
+    "a","an","the","is","are","was","were","in","on","at","of","for","to",
+    "and","or","with","by","as","from","that","this","it","be","have",
+    "has","had","good","along","including","they","we","you","your"
 }
 
 
-def _normalize(text: str) -> str:
-    return text.lower()
+class SkillMatcher:
 
+    def __init__(self):
+        self.model = get_embedding_model()
 
-def _tokenize(text: str) -> List[str]:
-    cleaned = _normalize(text)
-    tokens = re.findall(r"[a-zA-Z+#.\-]{2,}", cleaned)
-    return [t for t in tokens if t not in _STOPWORDS]
+    # 🔹 Clean tokens
+    def _clean_tokens(self, text: str) -> Set[str]:
+        words = text.lower().split()
+        return {
+            w.strip(".,()")
+            for w in words
+            if len(w) > 2 and w not in STOPWORDS
+        }
 
+    # 🔹 Extract candidate skills (basic)
+    def _extract_skills(self, text: str) -> Set[str]:
+        return self._clean_tokens(text)
 
-def _unique(tokens: Iterable[str]) -> List[str]:
-    seen: Set[str] = set()
-    ordered: List[str] = []
-    for t in tokens:
-        if t not in seen:
-            seen.add(t)
-            ordered.append(t)
-    return ordered
+    # 🔹 Cosine similarity
+    def _cosine(self, a: np.ndarray, b: np.ndarray) -> float:
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
 
+    # 🔥 MAIN FUNCTION
+    def analyze_match(self, resume_text: str, job_text: str) -> Dict[str, Any]:
 
-def _extract_tools(tokens: Iterable[str]) -> List[str]:
-    token_set = {t.lower() for t in tokens}
-    tools = [tool for tool in _KNOWN_TOOLS if tool in token_set]
-    return tools
+        # 1️⃣ Extract skills
+        resume_skills = self._extract_skills(resume_text)
+        job_skills = self._extract_skills(job_text)
 
+        # 2️⃣ Keyword match
+        matching_keywords = resume_skills & job_skills
+        missing_keywords = job_skills - resume_skills
 
-def extract_job_skills(job_description: str) -> InternalJobSkillExtractionResult:
-    """
-    Lightweight heuristic job skill + tool extraction.
+        keyword_score = len(matching_keywords) / max(len(job_skills), 1)
 
-    This intentionally stays simple and deterministic so the backend works
-    out of the box without an external NLP model.
-    """
-    tokens = _tokenize(job_description)
-    skills = _unique(tokens)
-    tools = _extract_tools(tokens)
-    return InternalJobSkillExtractionResult(job_skills=skills, tools=tools)
+        # 3️⃣ Semantic similarity (AI)
+        embeddings = embed_texts(self.model, [resume_text, job_text])
+        semantic_score = self._cosine(embeddings[0], embeddings[1])
 
+        # 4️⃣ Hybrid score
+        final_score = int((0.5 * keyword_score + 0.5 * semantic_score) * 100)
 
-def extract_skills_and_profile(
-    resume_text: str,
-    job_description: str,
-) -> InternalSkillExtractionResult:
-    """
-    Extract skills from resume and job description and compute simple overlaps.
-    """
-    resume_tokens = _tokenize(resume_text)
-    job_tokens = _tokenize(job_description)
+        # 🚫 Prevent fake 100%
+        if final_score > 95:
+            final_score = 95
 
-    resume_skills = _unique(resume_tokens)
-    job_skills = _unique(job_tokens)
+        # 5️⃣ Clean output (remove junk words)
+        def clean_output(skills: List[str]) -> List[str]:
+            return [s for s in skills if len(s) > 2][:15]
 
-    resume_set = set(resume_skills)
-    job_set = set(job_skills)
-
-    matched = sorted(resume_set & job_set)
-    missing = sorted(job_set - resume_set)
-    tools = _extract_tools(resume_tokens + job_tokens)
-
-    education = []
-    text_lower = _normalize(resume_text)
-    if "bachelor" in text_lower or "b.sc" in text_lower or "bsc" in text_lower:
-        education.append("Bachelor's degree")
-    if "master" in text_lower or "m.sc" in text_lower or "msc" in text_lower:
-        education.append("Master's degree")
-    if "phd" in text_lower or "ph.d" in text_lower:
-        education.append("PhD")
-
-    experience_summary = "Experience details extracted from resume text."
-
-    return InternalSkillExtractionResult(
-        resume_skills=resume_skills,
-        job_skills=job_skills,
-        matched_skills=matched,
-        missing_skills=missing,
-        tools=tools,
-        education=education,
-        experience_summary=experience_summary,
-    )
-
+        return {
+            "match_score": final_score,
+            "matching_skills": clean_output(list(matching_keywords)),
+            "missing_skills": clean_output(list(missing_keywords)),
+            "suggestions": [
+                f"Add experience with {s}" for s in clean_output(list(missing_keywords))[:5]
+            ]
+        }
