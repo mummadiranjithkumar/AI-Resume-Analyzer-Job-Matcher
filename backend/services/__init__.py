@@ -1,14 +1,12 @@
 """
-Service layer modules for parsing, embeddings, vector store, ATS scoring,
-skill extraction, and LLM-style analysis.
+Service layer modules for parsing, embeddings, skill extraction, and ATS scoring.
 """
 
-from . import embeddings, parser, vector_store, skill_extractor, ats_score, llm_service
+from . import embeddings, parser, skill_extractor, ats_score, llm_service
 
 __all__ = [
     "parser",
     "embeddings",
-    "vector_store",
     "skill_extractor",
     "ats_score",
     "llm_service",

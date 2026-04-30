@@ -6,7 +6,7 @@ from fastapi import status
 
 # ✅ FIXED imports (removed backend)
 from models.schemas import ResumeUploadResponse
-from services import parser, embeddings, vector_store
+from services import parser, embeddings
 
 
 router = APIRouter(tags=["resume"])
@@ -19,7 +19,7 @@ router = APIRouter(tags=["resume"])
 )
 async def upload_resume(file: UploadFile = File(...)) -> ResumeUploadResponse:
     """
-    Upload a resume (PDF or text), extract text, chunk, embed and build FAISS index.
+    Upload a resume (PDF or text), extract text and save.
     """
     if not file.filename:
         raise HTTPException(
@@ -53,9 +53,7 @@ async def upload_resume(file: UploadFile = File(...)) -> ResumeUploadResponse:
                 detail="No meaningful text chunks could be created from the resume.",
             )
 
-        model = embeddings.get_embedding_model()
-        vectors = embeddings.embed_texts(model, chunks)
-        vector_store.create_and_persist_index(resume_id, chunks, vectors)
+        # Text processing complete - no vector indexing needed
 
         preview = text[:600].replace("\n", " ")
 

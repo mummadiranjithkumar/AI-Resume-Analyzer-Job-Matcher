@@ -12,7 +12,6 @@ from models.schemas import (
 )
 from services import (
     parser,
-    vector_store,
     embeddings,
     skill_extractor,
     ats_score,
@@ -48,14 +47,8 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     # Embedding model
     model = embeddings.get_embedding_model()
 
-    # RAG: retrieve top chunks relevant to job description
-    try:
-        index, chunk_metadata = vector_store.load_index_and_chunks(request.resume_id)
-        jd_vector = embeddings.embed_texts(model, [job_text])
-        top_chunks = vector_store.search_top_k(index, chunk_metadata, jd_vector[0], k=5)
-        context_for_llm = "\n\n".join(top_chunks)
-    except FileNotFoundError:
-        context_for_llm = resume_text
+    # Use resume text directly for analysis
+    context_for_llm = resume_text
 
     # Skill extraction
     skill_result = skill_extractor.extract_skills_and_profile(
