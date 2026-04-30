@@ -6,6 +6,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
+# 🔥 Global cached model
 _MODEL: Optional[SentenceTransformer] = None
 _MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
@@ -23,9 +24,18 @@ def get_embedding_model() -> SentenceTransformer:
 def embed_texts(model: SentenceTransformer, texts: Sequence[str]) -> np.ndarray:
     """
     Embed a list of texts into a 2D numpy array [n_texts, dim].
+    Optimized for speed and similarity quality.
     """
     if not texts:
-        return np.zeros((0, model.get_sentence_embedding_dimension()), dtype="float32")
-    embeddings = model.encode(list(texts), convert_to_numpy=True, show_progress_bar=False)
-    return embeddings.astype("float32")
+        dim = model.get_sentence_embedding_dimension()
+        return np.zeros((0, dim), dtype="float32")
 
+    embeddings = model.encode(
+        list(texts),
+        batch_size=32,                 # ⚡ faster batching
+        convert_to_numpy=True,
+        normalize_embeddings=True,     # 🔥 improves cosine similarity
+        show_progress_bar=False
+    )
+
+    return embeddings.astype("float32")
