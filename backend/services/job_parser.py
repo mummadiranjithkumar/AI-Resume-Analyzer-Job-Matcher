@@ -3,7 +3,6 @@ import io
 import os
 from typing import Optional
 from PIL import Image
-import numpy as np
 from pypdf import PdfReader
 
 # ✅ SAFE OCR IMPORT
@@ -45,19 +44,9 @@ class JobParser:
 
         return self._clean_text(text)
 
+    # 🔥 PERFORMANCE FIX: DISABLE OCR (NO HANG)
     def _extract_from_image(self, image_bytes: bytes) -> str:
-
-        # 🔥 SAFE FALLBACK (NO OCR IN PRODUCTION)
-        if not TESSERACT_AVAILABLE:
-            return "Image OCR not supported on server. Please upload PDF."
-
-        try:
-            image = Image.open(io.BytesIO(image_bytes))
-            text = pytesseract.image_to_string(image)
-            return self._clean_text(text)
-
-        except Exception:
-            return "OCR failed. Please upload PDF."
+        return "Image parsing disabled for performance. Please upload PDF."
 
     def _clean_text(self, text: str) -> str:
         if not text:

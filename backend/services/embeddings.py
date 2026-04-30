@@ -21,21 +21,15 @@ def get_embedding_model() -> SentenceTransformer:
     return _MODEL
 
 
-def embed_texts(model: SentenceTransformer, texts: Sequence[str]) -> np.ndarray:
-    """
-    Embed a list of texts into a 2D numpy array [n_texts, dim].
-    Optimized for speed and similarity quality.
-    """
+def embed_texts(model, texts):
     if not texts:
         dim = model.get_sentence_embedding_dimension()
         return np.zeros((0, dim), dtype="float32")
 
-    embeddings = model.encode(
+    return model.encode(
         list(texts),
-        batch_size=32,                 # ⚡ faster batching
+        batch_size=8,   # 🔥 REDUCED (IMPORTANT)
         convert_to_numpy=True,
-        normalize_embeddings=True,     # 🔥 improves cosine similarity
+        normalize_embeddings=True,
         show_progress_bar=False
-    )
-
-    return embeddings.astype("float32")
+    ).astype("float32")
