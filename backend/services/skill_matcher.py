@@ -1,6 +1,7 @@
-import re
 import numpy as np
 from typing import List, Dict, Any
+
+import spacy
 
 from services.embeddings import get_embedding_model, embed_texts
 
@@ -9,16 +10,28 @@ class SkillMatcher:
 
     def __init__(self):
         self.model = get_embedding_model()
+        self.nlp = spacy.load("en_core_web_sm")
 
-    # 🔹 Extract meaningful phrases (NOT words)
-    def extract_phrases(self, text: str) -> List[str]:
-        text = text.lower()
+    # 🔹 Extract meaningful skills using NLP
+    def extract_skills(self, text: str) -> List[str]:
+        doc = self.nlp(text)
 
-        # capture phrases: "spring boot", "rest api"
-        phrases = re.findall(r'\b[a-zA-Z]+(?:\s+[a-zA-Z]+){0,2}\b', text)
+        skills = []
 
-        # filter very short phrases
-        return list(set([p.strip() for p in phrases if len(p) > 3]))
+        for chunk in doc.noun_chunks:
+            phrase = chunk.text.strip().lower()
+
+            # basic filtering (minimal, not manual rules)
+            if len(phrase) < 3:
+                continue
+
+            # remove pronouns / weak chunks
+            if chunk.root.pos_ in {"PRON", "DET"}:
+                continue
+
+            skills.append(phrase)
+
+        return list(set(skills))
 
     # 🔹 cosine similarity
     def cosine(self, a, b):
@@ -26,26 +39,32 @@ class SkillMatcher:
 
     def analyze_match(self, resume_text: str, job_description: str) -> Dict[str, Any]:
 
-        # 1️⃣ Extract phrases
-        jd_phrases = self.extract_phrases(job_description)
-        resume_phrases = self.extract_phrases(resume_text)
+        # 1️⃣ Extract skills using NLP
+        jd_skills = self.extract_skills(job_description)
+        resume_skills = self.extract_skills(resume_text)
 
-        # 2️⃣ Embed phrases
-        jd_emb = embed_texts(self.model, jd_phrases)
-        res_emb = embed_texts(self.model, resume_phrases)
+        # 2️⃣ Embed skills
+        jd_emb = embed_texts(self.model, jd_skills)
+        res_emb = embed_texts(self.model, resume_skills)
 
-        # 3️⃣ Semantic phrase matching
         matched = []
         missing = []
 
+        # 3️⃣ Semantic matching
         for i, jd_vec in enumerate(jd_emb):
-            sims = np.dot(res_emb, jd_vec)
-            if len(sims) > 0 and np.max(sims) > 0.65:
-                matched.append(jd_phrases[i])
-            else:
-                missing.append(jd_phrases[i])
 
-        keyword_score = len(matched) / max(len(jd_phrases), 1)
+            if len(res_emb) == 0:
+                missing.append(jd_skills[i])
+                continue
+
+            sims = np.dot(res_emb, jd_vec)
+
+            if np.max(sims) > 0.7:
+                matched.append(jd_skills[i])
+            else:
+                missing.append(jd_skills[i])
+
+        keyword_score = len(matched) / max(len(jd_skills), 1)
 
         # 4️⃣ Full text similarity
         full_emb = embed_texts(self.model, [resume_text, job_description])
