@@ -1,3 +1,5 @@
+import re
+from typing import List, Dict, Any
 def extract_skills(self, text: str) -> List[str]:
     text = self.normalize(text)
 
