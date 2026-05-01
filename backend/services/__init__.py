@@ -1,12 +1,14 @@
 """
-Service layer modules for parsing, skill extraction, and ATS scoring.
+Service layer modules for resume analysis.
 """
 
+from .skill_matcher import SkillMatcher
+from .pdf_extractor import PDFExtractor
+from .job_parser import JobParser
 
 __all__ = [
-    "parser",
-    "skill_extractor",
-    "ats_score",
-    "llm_service",
+    "SkillMatcher",
+    "PDFExtractor",
+    "JobParser",
 ]
 
