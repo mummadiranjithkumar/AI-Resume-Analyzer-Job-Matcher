@@ -1,59 +1,39 @@
-import re
-import numpy as np
-from typing import List, Dict, Any
+def extract_skills(self, text: str) -> List[str]:
+    text = self.normalize(text)
 
+    words = text.split()
 
-class SkillMatcher:
+    stopwords = {
+        "the", "and", "or", "with", "for", "in", "on", "at",
+        "a", "an", "to", "of", "is", "are", "be",
+        "candidate", "seeking", "experience", "using",
+        "developer", "role", "job", "required", "responsible"
+    }
 
-    def __init__(self):
-        # ✅ No spaCy model needed (ultra fast)
-        pass
+    skills = set()
 
-    # 🔹 normalize text
-    def normalize(self, text: str) -> str:
-        text = text.lower().strip()
-        text = re.sub(r'[^a-z0-9+\-\.#\s]', ' ', text)
-        return text
+    for i in range(len(words)):
+        w1 = words[i]
 
-    # 🔹 simple skill extraction (FAST + NO MODEL)
-    def extract_skills(self, text: str) -> List[str]:
-        text = self.normalize(text)
+        # filter weak words
+        if w1 in stopwords or len(w1) < 3:
+            continue
 
-        words = text.split()
+        # keep technical-looking words
+        if any(c.isdigit() for c in w1) or "+" in w1 or "#" in w1:
+            skills.add(w1)
+        else:
+            skills.add(w1)
 
-        # simple phrases (2–3 word chunks)
-        skills = set()
+        # 2-word phrases (important)
+        if i < len(words) - 1:
+            w2 = words[i + 1]
 
-        for i in range(len(words)):
-            if len(words[i]) > 2:
-                skills.add(words[i])
+            if w2 not in stopwords and len(w2) > 2:
+                phrase = f"{w1} {w2}"
 
-            if i < len(words) - 1:
-                phrase = f"{words[i]} {words[i+1]}"
-                skills.add(phrase)
+                # filter weak phrases
+                if not any(sw in phrase for sw in ["seeking", "responsible", "candidate"]):
+                    skills.add(phrase)
 
-        return list(skills)
-
-    # 🔹 cosine similarity
-    def cosine(self, a, b):
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
-
-    def analyze_match(self, resume_text: str, job_description: str) -> Dict[str, Any]:
-
-        # 🔹 extract skills
-        jd_skills = self.extract_skills(job_description)
-        resume_skills = self.extract_skills(resume_text)
-
-        matched = list(set(jd_skills) & set(resume_skills))
-        missing = list(set(jd_skills) - set(resume_skills))
-
-        # 🔹 basic scoring
-        score = int((len(matched) / max(len(jd_skills), 1)) * 100)
-        score = min(score, 95)
-
-        return {
-            "match_score": score,
-            "matching_skills": matched[:10],
-            "missing_skills": missing[:10],
-            "suggestions": [f"Add {s}" for s in missing[:5]]
-        }
+    return list(skills)
