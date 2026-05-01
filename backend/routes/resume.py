@@ -6,7 +6,7 @@ from fastapi import status
 
 # ✅ FIXED imports (removed backend)
 from models.schemas import ResumeUploadResponse
-from services import parser, embeddings
+from services import parser
 
 
 router = APIRouter(tags=["resume"])

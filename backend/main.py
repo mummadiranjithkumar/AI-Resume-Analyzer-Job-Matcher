@@ -5,23 +5,12 @@ from routes.match import router as match_router
 from routes.job import router as job_router
 from routes.resume import router as resume_router
 
-# 🔥 ONLY load embedding model (safe)
-from services.embeddings import get_embedding_model
-
 
 app = FastAPI(
     title="AI Resume Analyzer API",
     description="Analyze resume vs job description and return match score",
     version="1.0.0"
 )
-
-
-# ✅ SAFE STARTUP (NO SPACY MODEL)
-@app.on_event("startup")
-def load_models():
-    print("🚀 Loading AI models...")
-    get_embedding_model()
-    print("✅ Models loaded successfully")
 
 
 # CORS

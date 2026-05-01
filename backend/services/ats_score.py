@@ -5,7 +5,6 @@ from typing import Iterable, List, Set
 import numpy as np
 
 from models.schemas import InternalATSComputationResult
-from services import embeddings
 
 
 def _normalize_tokens(tokens: Iterable[str]) -> Set[str]:
@@ -45,13 +44,13 @@ def compute_ats_score(
     else:
         keyword_match_score = 0.0
 
-    # Semantic similarity using sentence-transformers
+    # Simple word overlap similarity
     try:
-        model = embeddings.get_embedding_model()
-        embed_resume = embeddings.embed_texts(model, [resume_text])
-        embed_job = embeddings.embed_texts(model, [job_description])
-        sim = _cosine_similarity(embed_resume, embed_job)
-        semantic_similarity_score = max(0.0, min(1.0, sim))
+        resume_words = set(resume_text.lower().split())
+        job_words = set(job_description.lower().split())
+        intersection = resume_words & job_words
+        union = resume_words | job_words
+        semantic_similarity_score = len(intersection) / max(len(union), 1)
     except Exception:
         semantic_similarity_score = 0.0
 

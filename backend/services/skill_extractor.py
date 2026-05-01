@@ -1,8 +1,5 @@
 import re
-import numpy as np
 from typing import Dict, Any, List
-
-from services.embeddings import get_embedding_model, embed_texts
 
 
 STOPWORDS = {
@@ -15,7 +12,7 @@ STOPWORDS = {
 class SkillMatcher:
 
     def __init__(self):
-        self.model = get_embedding_model()
+        pass
 
     # 🔹 Extract phrases (important!)
     def extract_phrases(self, text: str) -> List[str]:
@@ -33,9 +30,12 @@ class SkillMatcher:
 
         return list(set(cleaned))
 
-    # 🔹 Cosine similarity
-    def cosine(self, a, b):
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+    # 🔹 Simple word overlap similarity
+    def word_overlap_similarity(self, words1: List[str], words2: List[str]) -> float:
+        set1, set2 = set(words1), set(words2)
+        intersection = set1 & set2
+        union = set1 | set2
+        return len(intersection) / max(len(union), 1)
 
     # 🔥 MAIN
     def analyze_match(self, resume_text: str, job_text: str) -> Dict[str, Any]:
@@ -54,12 +54,8 @@ class SkillMatcher:
 
         keyword_score = len(matching) / max(len(jd_skills), 1)
 
-        # 3️⃣ Semantic match (full text)
-        emb = embed_texts(self.model, [resume_text, job_text])
-        semantic_score = self.cosine(emb[0], emb[1])
-
-        # 4️⃣ Final score
-        final_score = int((0.6 * keyword_score + 0.4 * semantic_score) * 100)
+        # 3️⃣ Final score (keyword-based only)
+        final_score = int(keyword_score * 100)
 
         # avoid fake 100
         final_score = min(final_score, 95)

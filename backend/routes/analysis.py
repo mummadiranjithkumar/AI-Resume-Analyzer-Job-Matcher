@@ -12,7 +12,6 @@ from models.schemas import (
 )
 from services import (
     parser,
-    embeddings,
     skill_extractor,
     ats_score,
     llm_service,
@@ -43,9 +42,6 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Job description cannot be empty.",
         )
-
-    # Embedding model
-    model = embeddings.get_embedding_model()
 
     # Use resume text directly for analysis
     context_for_llm = resume_text
